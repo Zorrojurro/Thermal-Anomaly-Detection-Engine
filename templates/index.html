@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Pattern Analyzer</title>
+    <meta name="description" content="CNN-Based Thermal Pattern Analysis of Power Transformers">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #050510;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-hover: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(139, 92, 246, 0.35);
+            --text: #eeeef5;
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --text-muted: rgba(255, 255, 255, 0.28);
+            --purple: #8b5cf6;
+            --purple-light: #a78bfa;
+            --pink: #ec4899;
+            --green: #34d399;
+            --red: #f87171;
+            --r: 14px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── WebGL Shader Canvas ──────────────────────────────────── */
+        #shader-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* ── Layout ───────────────────────────────────────────────── */
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ── Nav ──────────────────────────────────────────────────── */
+        .nav {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(5, 5, 16, 0.7);
+        }
+
+        .nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .nav-brand .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .nav-badge {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            color: var(--text-dim);
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Hero ─────────────────────────────────────────────────── */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+
+        .hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        .hero-chip .emoji {
+            font-size: 0.9rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% 200%;
+            animation: shimmer 5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        .hero p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 520px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        /* ── Upload Card ──────────────────────────────────────────── */
+        .upload-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 48px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            max-width: 640px;
+            margin: 0 auto 32px;
+        }
+
+        .upload-card::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: calc(var(--r) + 2px);
+            background: conic-gradient(from 180deg, transparent 60%, var(--purple) 78%, var(--pink) 90%, transparent 100%);
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.5s;
+            animation: rotate-border 4s linear infinite;
+        }
+
+        @keyframes rotate-border {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .upload-card:hover {
+            border-color: transparent;
+        }
+
+        .upload-card:hover::after {
+            opacity: 0.5;
+        }
+
+        .upload-card.dragover {
+            border-color: var(--purple);
+            background: var(--surface-hover);
+        }
+
+        .upload-icon-wrap {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+
+        .upload-card h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .upload-card p {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, var(--purple), #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(139, 92, 246, 0.3);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* ── Samples ──────────────────────────────────────────────── */
+        .samples {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .samples-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        .sample-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .sample-chip {
+            padding: 5px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .sample-chip:hover {
+            background: var(--surface-hover);
+            border-color: var(--border-accent);
+            color: var(--text);
+            transform: translateY(-1px);
+        }
+
+        /* ── Loading ──────────────────────────────────────────────── */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 100px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .loader {
+            width: 44px;
+            height: 44px;
+            margin: 0 auto 24px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--purple);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        .loading .sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ── Results ──────────────────────────────────────────────── */
+        .results {
+            display: none;
+            max-width: 960px;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+
+        .results.active {
+            display: block;
+            animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* Prediction Banner */
+        .prediction {
+            border-radius: var(--r);
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .prediction.normal {
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.02));
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .prediction.abnormal {
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.08), rgba(248, 113, 113, 0.02));
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .pred-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 18px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .prediction.normal .pred-badge {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--green);
+        }
+
+        .prediction.abnormal .pred-badge {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--red);
+        }
+
+        .pred-text {
+            font-size: 1rem;
+            color: var(--text-dim);
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .stat-val {
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--purple-light), var(--pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Section Header */
+        .section-hdr {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .section-hdr .line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Image Grid */
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .img-tile {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .img-tile:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-accent);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .img-tile img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            display: block;
+            background: #08081a;
+        }
+
+        .img-tile .cap {
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Reset Button */
+        .reset-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto;
+            padding: 12px 32px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            border-radius: 50px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            border-color: var(--border-accent);
+            color: var(--text);
+            background: var(--surface);
+        }
+
+        /* ── Footer ───────────────────────────────────────────────── */
+        .footer {
+            margin-top: auto;
+            padding: 24px 0;
+            text-align: center;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Responsive ───────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 48px 0 40px;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .stats,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- WebGL Shader Background -->
+    <canvas id="shader-canvas"></canvas>
+
+    <div class="app">
+
+        <!-- Nav -->
+        <nav class="nav">
+            <div class="container">
+                <div class="nav-brand">
+                    <div class="dot"></div>
+                    Thermal Analyzer
+                </div>
+                <div class="nav-badge">ResNet-18 + Bi-LSTM</div>
+            </div>
+        </nav>
+
+        <!-- Hero + Upload -->
+        <div id="upload-section">
+            <section class="hero">
+                <div class="container">
+                    <div class="hero-chip">
+                        <span class="emoji">⚡</span>
+                        CNN-Based Pattern Analysis
+                    </div>
+                    <h1>
+                        Detect <span class="gradient">Thermal Anomalies</span><br>
+                        in Power Equipment
+                    </h1>
+                    <p>
+                        Upload an infrared thermal image and instantly detect
+                        abnormal heat patterns using deep learning.
+                    </p>
+
+                    <div class="upload-card" id="drop-zone">
+                        <div class="upload-icon-wrap">📸</div>
+                        <h3>Drop your thermal image here</h3>
+                        <p>Supports JPG, PNG, BMP, TIFF</p>
+                        <button class="upload-btn"
+                            onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+                            <span>↑</span> Choose File
+                        </button>
+                        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.bmp,.tiff,.tif">
+                    </div>
+
+                    <div class="samples">
+                        <div class="samples-label">Or try a sample from the dataset</div>
+                        <div class="sample-chips" id="sample-chips"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="loader"></div>
+            <p>Analyzing thermal patterns…</p>
+            <p class="sub">Running through CNN → LSTM → Anomaly Detector</p>
+        </div>
+
+        <!-- Results -->
+        <div class="results container" id="results">
+
+            <div class="prediction" id="prediction-card">
+                <div class="pred-badge" id="pred-badge"></div>
+                <div class="pred-text" id="pred-text"></div>
+            </div>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Anomaly Score</div>
+                    <div class="stat-val" id="s-score">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Confidence</div>
+                    <div class="stat-val" id="s-conf">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Verdict</div>
+                    <div class="stat-val" id="s-verdict">—</div>
+                </div>
+            </div>
+
+            <div class="section-hdr">
+                <span>🔬 Grad-CAM Attention</span>
+                <span class="line"></span>
+            </div>
+            <div class="grid-3">
+                <div class="img-tile"><img id="i-enhanced">
+                    <div class="cap">Enhanced Input</div>
+                </div>
+                <div class="img-tile"><img id="i-gradcam">
+                    <div class="cap">Attention Map</div>
+                </div>
+                <div class="img-tile"><img id="i-overlay">
+                    <div class="cap">Overlay</div>
+                </div>
+            </div>
+
+            <div class="section-hdr">
+                <span>📋 Preprocessing Pipeline</span>
+                <span class="line"></span>
+            </div>
+            <div class="grid-4">
+                <div class="img-tile"><img id="i-original">
+                    <div class="cap">Original</div>
+                </div>
+                <div class="img-tile"><img id="i-resized">
+                    <div class="cap">Resized</div>
+                </div>
+                <div class="img-tile"><img id="i-denoised">
+                    <div class="cap">Denoised</div>
+                </div>
+                <div class="img-tile"><img id="i-normalized">
+                    <div class="cap">Normalized</div>
+                </div>
+            </div>
+
+            <button class="reset-btn" onclick="resetUI()">↺ Analyze Another Image</button>
+        </div>
+
+        <footer class="footer">
+            CNN-Based Thermal Pattern Analysis of Power Transformers
+        </footer>
+    </div>
+
+    <!-- ── WebGL Warp Shader ──────────────────────────────────────────── -->
+    <script>
+        (function () {
+            const canvas = document.getElementById('shader-canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            const vs = `attribute vec2 p; void main(){ gl_Position=vec4(p,0,1); }`;
+            const fs = `
+    precision mediump float;
+    uniform float t;
+    uniform vec2 r;
+    void main(){
+        vec2 u = gl_FragCoord.xy / r;
+        float d = length(u - 0.5);
+        float wave = sin(u.x * 6.0 + t * 0.5) * cos(u.y * 5.0 + t * 0.3) * 0.5 + 0.5;
+        float wave2 = sin(u.x * 3.0 - t * 0.7 + u.y * 4.0) * 0.3 + 0.5;
+        vec3 c1 = vec3(0.35, 0.22, 0.75);
+        vec3 c2 = vec3(0.85, 0.18, 0.52);
+        vec3 c3 = vec3(0.95, 0.6, 0.1);
+        vec3 col = mix(c1, c2, wave);
+        col = mix(col, c3, wave2 * 0.4);
+        col *= 1.0 - d * 0.8;
+        col *= 0.35;
+        gl_FragColor = vec4(col, 1.0);
+    }`;
+
+            function compile(type, src) {
+                const s = gl.createShader(type);
+                gl.shaderSource(s, src);
+                gl.compileShader(s);
+                return s;
+            }
+
+            const prog = gl.createProgram();
+            gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
+            gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+            const loc = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+            const uTime = gl.getUniformLocation(prog, 't');
+            const uRes = gl.getUniformLocation(prog, 'r');
+
+            function draw(time) {
+                gl.uniform1f(uTime, time * 0.001);
+                gl.uniform2f(uRes, canvas.width, canvas.height);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        })();
+    </script>
+
+    <!-- ── App Logic ───────────────────────────────────────────────────── -->
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadSection = document.getElementById('upload-section');
+        const loadingEl = document.getElementById('loading');
+        const resultsEl = document.getElementById('results');
+
+        // Drag & drop
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) analyzeFile(e.dataTransfer.files[0]);
+        });
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) analyzeFile(fileInput.files[0]); });
+
+        // Load samples
+        fetch('/sample_images').then(r => r.json()).then(names => {
+            const el = document.getElementById('sample-chips');
+            names.forEach(n => {
+                const c = document.createElement('div');
+                c.className = 'sample-chip';
+                c.textContent = n.replace(/\.[^/.]+$/, '');
+                c.onclick = () => analyzeSample(n);
+                el.appendChild(c);
+            });
+        }).catch(() => { });
+
+        function analyzeFile(file) {
+            showLoading();
+            const fd = new FormData();
+            fd.append('file', file);
+            fetch('/analyze', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(render)
+                .catch(err => { alert('Error: ' + err.message); resetUI(); });
+        }
+
+        function analyzeSample(name) {
+            showLoading();
+            fetch('/analyze_sample/' + encodeURIComponent(name))
+                .then(r => r.json())
+                .then(render)
+                .catch(err => { alert('Error: ' + err.message); resetUI(); });
+        }
+
+        function showLoading() {
+            uploadSection.style.display = 'none';
+            loadingEl.classList.add('active');
+            resultsEl.classList.remove('active');
+        }
+
+        function render(data) {
+            loadingEl.classList.remove('active');
+            resultsEl.classList.add('active');
+
+            const ok = data.prediction === 'NORMAL';
+            const card = document.getElementById('prediction-card');
+            card.className = 'prediction ' + (ok ? 'normal' : 'abnormal');
+
+            document.getElementById('pred-badge').textContent = (ok ? '✅ ' : '⚠️ ') + data.prediction;
+            document.getElementById('pred-text').textContent = ok
+                ? 'Equipment operating within normal thermal parameters'
+                : 'Abnormal thermal pattern detected — inspection recommended';
+
+            document.getElementById('s-score').textContent = data.anomaly_score.toFixed(4);
+            document.getElementById('s-conf').textContent = data.confidence.toFixed(1) + '%';
+            const v = document.getElementById('s-verdict');
+            v.textContent = data.prediction;
+            v.style.cssText = ok
+                ? 'background:linear-gradient(135deg,#34d399,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent'
+                : 'background:linear-gradient(135deg,#f87171,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent';
+
+            const im = data.images;
+            document.getElementById('i-original').src = 'data:image/png;base64,' + im.original;
+            document.getElementById('i-resized').src = 'data:image/png;base64,' + im.resized;
+            document.getElementById('i-denoised').src = 'data:image/png;base64,' + im.denoised;
+            document.getElementById('i-enhanced').src = 'data:image/png;base64,' + im.enhanced;
+            document.getElementById('i-normalized').src = 'data:image/png;base64,' + im.normalized;
+            document.getElementById('i-gradcam').src = 'data:image/png;base64,' + im.gradcam;
+            document.getElementById('i-overlay').src = 'data:image/png;base64,' + im.overlay;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetUI() {
+            uploadSection.style.display = 'block';
+            resultsEl.classList.remove('active');
+            loadingEl.classList.remove('active');
+            fileInput.value = '';
+        }
+    </script>
+
+</body>
+
+</html>

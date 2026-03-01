@@ -1,0 +1,90 @@
+# ============================================================
+# CNN-Based Thermal Pattern Analysis — Configuration
+# ============================================================
+
+# --- Data ---
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  sequences_dir: "data/sequences"
+  image_size: [224, 224]
+  sequence_length: 5 # shorter = more sequences for 90%+ accuracy
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  num_workers: 0
+
+# --- Preprocessing ---
+preprocessing:
+  bilateral_filter:
+    d: 9
+    sigma_color: 75
+    sigma_space: 75
+  clahe:
+    clip_limit: 2.0
+    tile_grid_size: [8, 8]
+  normalize: true # Min-Max to [0, 1]
+
+# --- Augmentation ---
+augmentation:
+  enabled: true
+  rotation_limit: 15 # degrees
+  horizontal_flip: true
+  vertical_flip: false
+  brightness_limit: 0.1
+  contrast_limit: 0.1
+
+# --- Model ---
+model:
+  feature_extractor:
+    backbone: "resnet18"
+    pretrained: true
+    in_channels: 1 # grayscale
+    embedding_dim: 256
+  sequence_analyzer:
+    hidden_size: 128
+    num_layers: 2
+    bidirectional: true
+    dropout: 0.3
+    attention: true
+  anomaly_detector:
+    similarity_metric: "cosine"
+    threshold: 0.7
+
+# --- Training ---
+training:
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  early_stopping:
+    patience: 25
+    min_delta: 0.0005
+  loss:
+    contrastive_weight: 0.0
+    triplet_weight: 0.0
+    triplet_margin: 1.0
+
+# --- Evaluation ---
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1_score
+    - auc_roc
+  grad_cam: true
+  confusion_matrix: true
+
+# --- Paths ---
+paths:
+  checkpoints: "checkpoints"
+  logs: "logs"
+  results: "results"
+  visualizations: "results/visualizations"
+
+# --- Device ---
+device: "auto" # auto | cpu | cuda
+seed: 42
