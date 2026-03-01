@@ -164,12 +164,9 @@ All hyperparameters are in `configs/config.yaml`:
 
 The project is structured for a hybrid cloud deployment:
 1. **Frontend (Next.js)**: Optimized for [Vercel](https://vercel.com).
-2. **Backend (Flask + ML)**: Optimized for [Render](https://render.com) or [Railway](https://railway.app) (supports larger Python environments and Docker).
+2. **Backend (Flask + ML)**: Optimized for [Render](https://render.com) or [Railway](https://railway.app).
 
-### Configuration
-
-- **Next.js**: See `frontend/vercel.json` for API proxying.
-- **Flask**: Ensure `CORS` is active (already implemented) and `DEVICE` is set to `cpu` for most cloud hosting free tiers.
+**[See Step-by-Step Deployment Guide (DEPLOYMENT.md)](./DEPLOYMENT.md)**
 
 ---
 

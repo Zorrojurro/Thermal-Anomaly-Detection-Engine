@@ -26,7 +26,6 @@ venv/
 ENV/
 
 # PyTorch/ML
-checkpoints/
 results/
 data/raw/
 data/processed/

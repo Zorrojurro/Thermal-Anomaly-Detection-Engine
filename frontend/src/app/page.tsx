@@ -18,7 +18,7 @@ const WarpShaderHero = dynamic(
   { ssr: false }
 );
 
-const API = "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 interface AnalysisResult {
   prediction: string;
@@ -244,8 +244,8 @@ export default function HomePage() {
               {/* Prediction Banner */}
               <div
                 className={`rounded-2xl p-10 text-center border backdrop-blur-xl shadow-2xl ${isNormal
-                    ? "bg-emerald-950/60 border-emerald-400/30"
-                    : "bg-red-950/60 border-red-400/30"
+                  ? "bg-emerald-950/60 border-emerald-400/30"
+                  : "bg-red-950/60 border-red-400/30"
                   }`}
               >
                 <div className="mb-3">
@@ -257,8 +257,8 @@ export default function HomePage() {
                 </div>
                 <div
                   className={`inline-flex px-5 py-1.5 rounded-full text-sm font-extrabold tracking-widest ${isNormal
-                      ? "bg-emerald-400/20 text-emerald-200 border border-emerald-400/30"
-                      : "bg-red-400/20 text-red-200 border border-red-400/30"
+                    ? "bg-emerald-400/20 text-emerald-200 border border-emerald-400/30"
+                    : "bg-red-400/20 text-red-200 border border-red-400/30"
                     }`}
                 >
                   {result.prediction}
