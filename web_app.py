@@ -249,5 +249,6 @@ def analyze_sample(filename):
 if __name__ == "__main__":
     print("Loading model...")
     load_model()
-    print("Starting server at http://localhost:5000")
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Starting server on port {port}")
+    app.run(debug=False, host="0.0.0.0", port=port)

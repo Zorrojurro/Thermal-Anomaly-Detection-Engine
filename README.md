@@ -160,6 +160,25 @@ All hyperparameters are in `configs/config.yaml`:
 
 ---
 
+## Deployment
+
+The project is structured for a hybrid cloud deployment:
+1. **Frontend (Next.js)**: Optimized for [Vercel](https://vercel.com).
+2. **Backend (Flask + ML)**: Optimized for [Render](https://render.com) or [Railway](https://railway.app) (supports larger Python environments and Docker).
+
+### Configuration
+
+- **Next.js**: See `frontend/vercel.json` for API proxying.
+- **Flask**: Ensure `CORS` is active (already implemented) and `DEVICE` is set to `cpu` for most cloud hosting free tiers.
+
+---
+
+## Repository
+
+[GitHub: Thermal-Anomaly-Detection-Engine](https://github.com/Zorrojurro/Thermal-Anomaly-Detection-Engine.git)
+
+---
+
 ## License
 
 This project is created for academic purposes (IPCV coursework).
