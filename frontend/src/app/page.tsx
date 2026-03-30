@@ -11,6 +11,8 @@ import {
   Layers,
   RotateCcw,
   Cpu,
+  Play,
+  X,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -35,7 +37,9 @@ export default function HomePage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [samples, setSamples] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     fetch(`${API}/sample_images`)
@@ -43,6 +47,19 @@ export default function HomePage() {
       .then(setSamples)
       .catch(() => { });
   }, []);
+
+  // Close video modal on Escape key
+  useEffect(() => {
+    if (!showVideo) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowVideo(false);
+        videoRef.current?.pause();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [showVideo]);
 
   const analyzeFile = useCallback(async (file: File) => {
     setState("loading");
@@ -124,6 +141,23 @@ export default function HomePage() {
                   Upload an infrared thermal image and instantly detect abnormal
                   heat patterns using deep learning.
                 </p>
+
+                {/* Watch Demo Button */}
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className="group inline-flex items-center gap-2.5 px-5 py-2.5 mb-6
+                    rounded-full border border-[#758BFD]/25 bg-white
+                    text-[#27187E] text-sm font-semibold
+                    hover:bg-[#758BFD]/8 hover:border-[#758BFD]/50 hover:shadow-lg hover:-translate-y-0.5
+                    transition-all duration-300"
+                >
+                  <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[#758BFD] to-[#27187E] flex items-center justify-center
+                    shadow-[0_0_12px_rgba(117,139,253,0.4)] group-hover:shadow-[0_0_20px_rgba(117,139,253,0.6)]
+                    transition-shadow duration-300">
+                    <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="white" />
+                  </span>
+                  Watch Project Demo
+                </button>
 
                 {/* Sample chips */}
                 {samples.length > 0 && (
@@ -305,6 +339,64 @@ export default function HomePage() {
               <RotateCcw className="w-4 h-4" />
               Analyze Another Image
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Video Modal ───────────────────────── */}
+      {showVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setShowVideo(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-[#27187E]/80 backdrop-blur-md animate-[fadeIn_0.3s_ease]" />
+
+          {/* Modal Content */}
+          <div
+            className="relative z-10 w-full max-w-4xl mx-6 animate-[scaleIn_0.35s_ease]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowVideo(false)}
+              className="absolute -top-12 right-0 w-9 h-9 rounded-full
+                bg-white/10 border border-white/20
+                flex items-center justify-center
+                text-white/80 hover:bg-white/20 hover:text-white
+                transition-all duration-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Video Container */}
+            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/40 bg-black">
+              {/* Header Bar */}
+              <div className="bg-gradient-to-r from-[#27187E] to-[#758BFD] px-5 py-3 flex items-center gap-3">
+                <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
+                  <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="white" />
+                </div>
+                <div>
+                  <p className="text-white text-sm font-bold tracking-tight">Project Demo</p>
+                  <p className="text-white/60 text-[0.65rem] font-medium">AI-Powered Thermal Monitoring for Power Transformers</p>
+                </div>
+              </div>
+
+              {/* Video Player */}
+              <video
+                ref={videoRef}
+                src="/AI_Transformer_Monitoring.mp4"
+                controls
+                autoPlay
+                className="w-full aspect-video"
+                playsInline
+              />
+            </div>
+
+            {/* Hint */}
+            <p className="text-center text-white/40 text-[0.7rem] mt-3 font-medium">
+              Press Esc or click outside to close
+            </p>
           </div>
         </div>
       )}
