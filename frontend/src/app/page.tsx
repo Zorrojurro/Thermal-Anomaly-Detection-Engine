@@ -99,7 +99,7 @@ export default function HomePage() {
   const isNormal = result?.prediction === "NORMAL";
 
   return (
-    <main className="min-h-screen bg-[#F7F7FF]">
+    <main className="min-h-screen">
       {/* ── Nav ───────────────────────────────── */}
       <nav className="sticky top-0 z-20 border-b border-[#27187E]/8 bg-[#F7F7FF]">
         <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
