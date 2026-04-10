@@ -13,6 +13,7 @@ import {
   Cpu,
   Play,
   X,
+  Thermometer as ThermometerIcon,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -61,12 +62,17 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [showVideo]);
 
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   const analyzeFile = useCallback(async (file: File) => {
     setState("loading");
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const r = await fetch(`${API}/analyze`, { method: "POST", body: fd });
+      const [r] = await Promise.all([
+        fetch(`${API}/analyze`, { method: "POST", body: fd }),
+        delay(5000),
+      ]);
       const data = await r.json();
       setResult(data);
       setState("results");
@@ -79,9 +85,10 @@ export default function HomePage() {
   const analyzeSample = useCallback(async (name: string) => {
     setState("loading");
     try {
-      const r = await fetch(
-        `${API}/analyze_sample/${encodeURIComponent(name)}`
-      );
+      const [r] = await Promise.all([
+        fetch(`${API}/analyze_sample/${encodeURIComponent(name)}`),
+        delay(5000),
+      ]);
       const data = await r.json();
       setResult(data);
       setState("results");
@@ -241,17 +248,7 @@ export default function HomePage() {
       )}
 
       {/* ── LOADING STATE ────────────────────── */}
-      {state === "loading" && (
-        <div className="h-[calc(100vh-49px)] flex flex-col items-center justify-center">
-          <div className="w-12 h-12 border-[3px] border-[#AEB8FE] border-t-[#27187E] rounded-full animate-spin mb-6" />
-          <p className="text-[#27187E] font-semibold text-lg">
-            Analyzing thermal patterns…
-          </p>
-          <p className="text-sm text-[#27187E]/50 mt-1">
-            CNN → LSTM → Anomaly Detector
-          </p>
-        </div>
-      )}
+      {state === "loading" && <LoadingSequence />}
 
       {/* ── RESULTS STATE ────────────────────── */}
       {state === "results" && result && (
@@ -467,6 +464,47 @@ function ImgTile({ src, label }: { src: string; label: string }) {
       <div className="px-3 py-2.5 text-center text-[0.72rem] font-semibold text-[#27187E]/60 border-t border-[#27187E]/6">
         {label}
       </div>
+    </div>
+  );
+}
+
+function LoadingSequence() {
+  const messages = ["Loading thermal image...", "Removing noise...", "Resizing...", "Detecting anomaly..."];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prevIndex) => (prevIndex + 1) % messages.length);
+    }, 1250); // 5000ms total / 4 messages = 1250ms per message
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex flex-col flex-1 items-center justify-center p-8 text-center bg-white/50 border border-[#27187E]/8 rounded-3xl min-h-[400px]">
+      <div className="relative w-24 h-24 mb-6">
+        <svg className="animate-spin w-full h-full text-[#758BFD]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <ThermometerIcon className="w-8 h-8 text-[#27187E]" />
+        </div>
+      </div>
+      <div className="h-6 overflow-hidden relative w-full flex justify-center">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`absolute transition-all duration-500 ease-in-out font-medium text-[#27187E]/70
+              ${i === index ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          >
+            {msg}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-sm text-[#27187E]/50 font-medium animate-pulse">
+        Processing frame...
+      </p>
     </div>
   );
 }
